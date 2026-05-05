@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unwritten 英語互動學習 Pro (含結算功能)</title>
+    <style>
+        :root {
+            --primary: #FFB300;
+            --secondary: #2196F3;
+            --dark: #2C3E50;
+            --light: #ECF0F1;
+            --success: #27AE60;
+            --error: #E74C3C;
+        }
+
+        body {
+            font-family: 'Segoe UI', "Microsoft JhengHei", sans-serif;
+            margin: 0; padding: 0;
+            background-color: var(--light);
+            color: var(--dark);
+        }
+
+        /* 導覽列 */
+        nav {
+            display: flex; justify-content: center;
+            background: var(--dark); padding: 10px;
+            position: sticky; top: 0; z-index: 1000; gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        nav button {
+            background: transparent; border: 1px solid var(--primary);
+            color: var(--primary); padding: 8px 12px;
+            cursor: pointer; border-radius: 5px; font-size: 14px;
+            transition: 0.3s;
+        }
+
+        nav button.active {
+            background: var(--primary); color: var(--dark); font-weight: bold;
+        }
+
+        nav button.btn-end {
+            border-color: var(--error); color: var(--error);
+            font-weight: bold; margin-left: 10px;
+        }
+
+        nav button.btn-end:hover {
+            background: var(--error); color: white;
+        }
+
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+
+        section {
+            display: none; background: white; padding: 20px;
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        section.active { display: block; }
+
+        h2 { color: var(--secondary); border-left: 5px solid var(--primary); padding-left: 10px; }
+
+        /* 元素樣式 */
+        .btn-audio {
+            background: #f0f0f0; border: none; border-radius: 50%;
+            width: 36px; height: 36px; cursor: pointer; font-size: 16px;
+            margin-right: 10px; transition: 0.2s;
+        }
+
+        .btn-audio:hover { background: var(--primary); }
+
+        .vocab-item { display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+        .vocab-word { font-size: 1.2rem; font-weight: bold; color: #d35400; }
+        .ipa { color: #7f8c8d; font-size: 0.9rem; margin-left: 10px; }
+        .lyric-row { padding: 12px 0; border-bottom: 1px solid #f9f9f9; }
+        .eng-txt { font-size: 1.1rem; font-weight: 500; display: block; }
+        .zht-txt { color: #666; font-size: 0.95rem; }
+
+        /* 評量樣式 */
+        .quiz-card { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 10px; }
+        .option {
+            display: block; width: 100%; text-align: left;
+            padding: 12px; margin: 8px 0; border: 1px solid #ddd;
+            border-radius: 8px; background: white; cursor: pointer; font-size: 1rem;
+        }
+        .option.correct { background-color: var(--success) !important; color: white; }
+        .option.wrong { background-color: var(--error) !important; color: white; }
+
+        /* 結算畫面專用 */
+        .summary-box { text-align: center; padding: 40px 20px; }
+        .stat-grid { display: flex; justify-content: space-around; margin: 30px 0; }
+        .stat-item { font-size: 1.5rem; font-weight: bold; }
+        .stat-label { display: block; font-size: 1rem; color: #666; }
+        .count-correct { color: var(--success); font-size: 3rem; }
+        .count-wrong { color: var(--error); font-size: 3rem; }
+
+        @media (max-width: 480px) {
+            nav button { padding: 6px 4px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="main-nav">
+    <button onclick="showSection('vocab')" id="btn-vocab" class="active">重點單字</button>
+    <button onclick="showSection('lyrics')" id="btn-lyrics">歌詞解析</button>
+    <button onclick="showSection('quiz')" id="btn-quiz">測驗評量</button>
+    <button onclick="endProgram()" class="btn-end">❌ 結束程式</button>
+</nav>
+
+<div class="container">
+    
+    <!-- 單字區 -->
+    <section id="vocab" class="active">
+        <h2>📚 重點單字</h2>
+        <div id="vocab-list"></div>
+    </section>
+
+    <!-- 歌詞區 -->
+    <section id="lyrics">
+        <h2>🎵 歌詞發音與翻譯</h2>
+        <div id="lyrics-list"></div>
+    </section>
+
+    <!-- 測驗區 -->
+    <section id="quiz">
+        <h2>✍️ 隨機模擬測驗</h2>
+        <div id="quiz-content"></div>
+        <button onclick="resetQuiz()" style="display:block; margin: 20px auto; padding: 10px 20px; background: var(--dark); color: white; border: none; border-radius: 8px; cursor: pointer;">重新抽選 5 題</button>
+    </section>
+
+    <!-- 結算區 -->
+    <section id="summary">
+        <div class="summary-box">
+            <h2>🏁 學習總結</h2>
+            <p>您已結束本次學習，以下是您的學習成果：</p>
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <span class="stat-label">答對題數</span>
+                    <span id="final-correct" class="count-correct">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">答錯題數</span>
+                    <span id="final-wrong" class="count-wrong">0</span>
+                </div>
+            </div>
+            <button onclick="restartProgram()" style="padding: 15px 30px; background: var(--secondary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.1rem;">🔄 重新開始學習</button>
+        </div>
+    </section>
+
+</div>
+
+<script>
+    // --- 資料庫 ---
+    const vocabData = [
+        { word: "Unwritten", pos: "adj.", ipa: "/ʌnˈrɪt.ən/", trans: "未寫下的、未成定局的" },
+        { word: "Illuminate", pos: "v.", ipa: "/ɪˈluː.mɪ.neɪt/", trans: "照亮、啟發" },
+        { word: "Inhibition", pos: "n.", ipa: "/ˌɪn.hɪˈbɪʃ.ən/", trans: "顧忌、壓抑" },
+        { word: "Conditioned", pos: "v-ed.", ipa: "/kənˈdɪʃ.ənd/", trans: "受制約的、習慣於" },
+        { word: "Undefined", pos: "adj.", ipa: "/ˌʌn.dɪˈfaɪnd/", trans: "未定義的" },
+        { word: "Drench", pos: "v.", ipa: "/drentʃ/", trans: "使濕透" },
+        { word: "Tradition", pos: "n.", ipa: "/trəˈdɪʃ.ən/", trans: "傳統、慣例" }
+    ];
+
+    const lyricsData = [
+        { eng: "I am unwritten, can't read my mind", zht: "我仍是空白的一頁，無人能讀懂我的心" },
+        { eng: "I'm undefined, I'm just beginning", zht: "我未被定義，我才剛開始" },
+        { eng: "The pen's in my hand, ending unplanned", zht: "筆就在我手中，結局尚未計畫" },
+        { eng: "Staring at the blank page before you", zht: "凝視著你面前那張空白的頁面" },
+        { eng: "Open up the dirty window", zht: "打開那扇蒙塵的窗戶" },
+        { eng: "Let the sun illuminate the words", zht: "讓陽光照亮那些字句" },
+        { eng: "Release your inhibitions", zht: "釋放你的束縛與顧忌" },
+        { eng: "Feel the rain on your skin", zht: "感受雨滴落在皮膚上的感覺" },
+        { eng: "Live your life with arms wide open", zht: "張開雙臂擁抱你的生活" },
+        { eng: "Today is where your book begins", zht: "今天是你故事的起點" }
+    ];
+
+    const quizPool = [
+        { q: "The contract is still ___; we can still change the terms.", options: ["unwritten", "broken", "dirty", "loud", "red"], ans: 0 },
+        { q: "The flashlight was used to ___ the dark cave.", options: ["drench", "illuminate", "condition", "read", "open"], ans: 1 },
+        { q: "She has no ___ and always speaks her mind freely.", options: ["traditions", "inhibitions", "windows", "pens", "pages"], ans: 1 },
+        { q: "After the rain, my clothes were completely ___.", options: ["unwritten", "undefined", "drenched", "illuminated", "planned"], ans: 2 },
+        { q: "We are often ___ by society to behave in certain ways.", options: ["conditioned", "opened", "tasted", "felt", "begun"], ans: 0 },
+        { q: "What is the traditional Chinese meaning of 'Undefined'?", options: ["已定的", "美麗的", "未定義的", "古老的", "濕透的"], ans: 2 },
+        { q: "Complete the lyric: 'Staring at the ___ page before you.'", options: ["dirty", "black", "blank", "written", "full"], ans: 2 },
+        { q: "Complete the lyric: 'Feel the ___ on your skin.'", options: ["sun", "wind", "rain", "snow", "pen"], ans: 2 },
+        { q: "Complete the lyric: 'The ___'s in my hand, ending unplanned.'", options: ["book", "pen", "key", "mind", "window"], ans: 1 },
+        { q: "In the song, what should you do with your 'inhibitions'?", options: ["Keep them", "Release them", "Hide them", "Write them", "Buy them"], ans: 1 },
+        { q: "Choose the synonym for 'Illuminate'.", options: ["Darken", "Light up", "Close", "Dry", "Sleep"], ans: 1 },
+        { q: "Which word is a NOUN (名詞)?", options: ["Illuminate", "Unwritten", "Inhibition", "Undefined", "Drench"], ans: 2 },
+        { q: "'The rest is still unwritten' means the future is ___.", options: ["fixed", "uncertain", "over", "boring", "past"], ans: 1 },
+        { q: "What should you open to let the sun in?", options: ["The door", "The window", "The book", "The box", "The pen"], ans: 1 },
+        { q: "'Drench' means to make something very ___.", options: ["cold", "wet", "hot", "dry", "fast"], ans: 1 },
+        { q: "The lyric 'I'm just beginning' means:", options: ["I am old", "I am tired", "I am starting now", "I am finished", "I am lost"], ans: 2 },
+        { q: "What is the IPA for 'Illuminate'?", options: ["/drentʃ/", "/ʌnˈrɪt.ən/", "/ɪˈluː.mɪ.neɪt/", "/kənˈdɪʃ.ənd/", "/ˌɪn.hɪˈbɪʃ.ən/"], ans: 2 },
+        { q: "Complete the lyric: 'Live your life with arms wide ___.'", options: ["closed", "broken", "open", "hidden", "crossed"], ans: 2 },
+        { q: "Which word means 'to be influenced by environment'?", options: ["Conditioned", "Undefined", "Drenched", "Unplanned", "Blank"], ans: 0 },
+        { q: "Where does 'your book begin' according to the song?", options: ["Yesterday", "Tomorrow", "Today", "Never", "In the school"], ans: 2 }
+    ];
+
+    // --- 全域變數 ---
+    let totalCorrect = 0;
+    let totalWrong = 0;
+    let currentQuestions = [];
+
+    // --- 音訊系統 ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(freq, type, duration) {
+        if (audioCtx.state === 'suspended') audioCtx.resume(); // 確保瀏覽器允許播放
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    const playSuccess = () => playTone(523, 'sine', 0.3);
+    const playError = () => playTone(220, 'sawtooth', 0.4);
+
+    function playAudio(text) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'en-US'; msg.rate = 0.9;
+        window.speechSynthesis.speak(msg);
+    }
+
+    // --- 核心邏輯 ---
+    function showSection(id) {
+        document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        const btn = document.getElementById('btn-' + id);
+        if(btn) btn.classList.add('active');
+        window.scrollTo(0,0);
+    }
+
+    function endProgram() {
+        document.getElementById('main-nav').style.display = 'none';
+        document.getElementById('final-correct').innerText = totalCorrect;
+        document.getElementById('final-wrong').innerText = totalWrong;
+        showSection('summary');
+    }
+
+    function restartProgram() {
+        totalCorrect = 0;
+        totalWrong = 0;
+        document.getElementById('main-nav').style.display = 'flex';
+        showSection('vocab');
+        resetQuiz();
+    }
+
+    function resetQuiz() {
+        const shuffled = [...quizPool].sort(() => 0.5 - Math.random());
+        currentQuestions = shuffled.slice(0, 5);
+        renderQuiz();
+    }
+
+    function renderQuiz() {
+        const container = document.getElementById('quiz-content');
+        container.innerHTML = "";
+        currentQuestions.forEach((item, idx) => {
+            let optionsHtml = item.options.map((opt, oIdx) => 
+                `<button class="option" onclick="handleAnswer(this, ${idx}, ${oIdx})">${String.fromCharCode(65+oIdx)}. ${opt}</button>`
+            ).join('');
+            
+            // 處理題目文字中的單引號，防止 onclick 語法出錯[cite: 1]
+            const escapedQ = item.q.replace(/___/g, "blank").replace(/'/g, "\\'");
+
+            container.innerHTML += `
+                <div class="quiz-card" id="q-block-${idx}">
+                    <div style="font-weight:bold; margin-bottom:10px;">
+                        <button class="btn-audio" onclick="playAudio('${escapedQ}')">▶</button>
+                        Q${idx+1}: ${item.q}
+                    </div>
+                    ${optionsHtml}
+                </div>`;
+        });
+    }
+
+    function handleAnswer(btn, qIdx, oIdx) {
+        const block = document.getElementById('q-block-' + qIdx);
+        if (block.classList.contains('done')) return;
+        
+        block.classList.add('done');
+        const correctIdx = currentQuestions[qIdx].ans;
+        const options = block.querySelectorAll('.option');
+
+        if (oIdx === correctIdx) {
+            btn.classList.add('correct');
+            playSuccess();
+            totalCorrect++;
+        } else {
+            btn.classList.add('wrong');
+            options[correctIdx].classList.add('correct');
+            playError();
+            totalWrong++;
+        }
+    }
+
+    // 初始化
+    window.onload = () => {
+        // 渲染單字
+        const vList = document.getElementById('vocab-list');
+        vocabData.forEach(i => {
+            const escapedWord = i.word.replace(/'/g, "\\'");
+            vList.innerHTML += `<div class="vocab-item"><button class="btn-audio" onclick="playAudio('${escapedWord}')">▶</button><div><span class="vocab-word">${i.word}</span><span class="ipa">${i.ipa}</span><br><small>${i.trans}</small></div></div>`;
+        });
+
+        // 渲染歌詞：處理英文歌詞中的單引號[cite: 1]
+        const lList = document.getElementById('lyrics-list');
+        lyricsData.forEach(i => {
+            const escapedEng = i.eng.replace(/'/g, "\\'");
+            lList.innerHTML += `<div class="lyric-row"><button class="btn-audio" onclick="playAudio('${escapedEng}')">▶</button><span class="eng-txt">${i.eng}</span><span class="zht-txt">${i.zht}</span></div>`;
+        });
+
+        resetQuiz();
+    };
+</script>
+
+</body>
+</html>
